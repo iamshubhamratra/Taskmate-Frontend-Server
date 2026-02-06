@@ -1,21 +1,23 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { FadeIn, GlowButton, StaggerContainer, StaggerItem } from "@/components/animations";
 import {
-  Users, Plus, Search, Trash2, Edit3, X, Loader2, Key, FileText, AlertTriangle,
-  ChevronRight, Hash, Save,
+  Users, Plus, Search, Trash2, Edit3, X, Loader2, Key, AlertTriangle,
+  Save, Copy, Check, Shield, UserCheck, ChevronRight, Crown,
 } from "lucide-react";
 
 export default function TeamsPage() {
   const { user } = useAuth();
-  const [teams, setTeams] = useState([]);
+  const [adminTeams, setAdminTeams] = useState([]);
+  const [memberTeams, setMemberTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showDelete, setShowDelete] = useState(null);
   const [showEdit, setShowEdit] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -25,16 +27,24 @@ export default function TeamsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [error, setError] = useState("");
+  const [copiedKey, setCopiedKey] = useState(null);
 
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     try {
-      const res = await api.listAdminTeams();
-      if (res.ok && res.data?.data) setTeams(res.data.data);
+      const [adminRes, memberRes] = await Promise.all([
+        api.listAdminTeams(),
+        api.listMemberTeams().catch(() => ({ ok: false })),
+      ]);
+      if (adminRes.ok && adminRes.data?.data) setAdminTeams(adminRes.data.data);
+      if (memberRes.ok && memberRes.data?.data) {
+        const adminKeys = new Set((adminRes.data?.data || []).map((t) => t.teamKey));
+        setMemberTeams((memberRes.data.data || []).filter((t) => !adminKeys.has(t.teamKey)));
+      }
     } catch {}
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { fetchTeams(); }, []);
+  useEffect(() => { fetchTeams(); }, [fetchTeams]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -59,6 +69,7 @@ export default function TeamsPage() {
       const res = await api.deleteTeam({ teamKey });
       if (res.ok) {
         setShowDelete(null);
+        setSelectedTeam(null);
         fetchTeams();
       }
     } catch {}
@@ -101,11 +112,90 @@ export default function TeamsPage() {
     setSearching(false);
   };
 
-  const openEdit = (team) => {
+  const openEdit = (team, e) => {
+    e?.stopPropagation();
     setEditForm({ teamName: team.teamName, teamDescription: team.teamDescription || "" });
     setShowEdit(team);
     setError("");
   };
+
+  const copyTeamKey = (key, e) => {
+    e?.stopPropagation();
+    navigator.clipboard.writeText(key);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const allTeams = adminTeams.length + memberTeams.length;
+
+  const TeamCard = ({ team, isAdmin }) => (
+    <motion.div
+      layout
+      whileHover={{ scale: 1.01, borderColor: "rgba(99,102,241,0.3)" }}
+      whileTap={{ scale: 0.995 }}
+      onClick={() => setSelectedTeam(team)}
+      className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 cursor-pointer transition-all hover:bg-white/[0.04]"
+    >
+      <div className="flex items-start gap-5">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-xl font-bold text-indigo-300 transition-transform group-hover:scale-105">
+          {team.teamName?.[0]?.toUpperCase() || "T"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h3 className="text-lg font-semibold text-white">{team.teamName}</h3>
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-[11px] font-medium text-amber-400">
+                <Crown className="h-3 w-3" /> Admin
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{team.teamDescription || "No description"}</p>
+          <div className="flex items-center gap-4 mt-3 flex-wrap">
+            <button
+              onClick={(e) => copyTeamKey(team.teamKey, e)}
+              className="flex items-center gap-2 text-sm text-zinc-400 hover:text-indigo-400 transition-colors font-mono bg-white/5 rounded-lg px-3 py-1.5 hover:bg-white/10"
+            >
+              <Key className="h-3.5 w-3.5" />
+              <span className="text-sm font-semibold tracking-wide">{team.teamKey}</span>
+              {copiedKey === team.teamKey ? (
+                <Check className="h-3.5 w-3.5 text-green-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
+            </button>
+            {team.createdAt && (
+              <div className="text-xs text-zinc-600">
+                Created {new Date(team.createdAt).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {isAdmin && (
+            <>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => openEdit(team, e)}
+                className="rounded-xl p-2.5 text-zinc-500 hover:bg-white/10 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+              >
+                <Edit3 className="h-4 w-4" />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => { e.stopPropagation(); setShowDelete(team); }}
+                className="rounded-xl p-2.5 text-zinc-500 hover:bg-red-500/10 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
+              >
+                <Trash2 className="h-4 w-4" />
+              </motion.button>
+            </>
+          )}
+          <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 transition-colors ml-1" />
+        </div>
+      </div>
+    </motion.div>
+  );
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -171,7 +261,12 @@ export default function TeamsPage() {
                   <div>
                     <div className="text-base font-semibold text-white">{searchResult.teamName}</div>
                     <div className="text-sm text-zinc-400">{searchResult.teamDescription || "No description"}</div>
-                    <div className="mt-1 text-xs font-mono text-zinc-500">{searchResult.teamKey}</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-sm font-mono font-semibold text-zinc-400">{searchResult.teamKey}</span>
+                      <button onClick={(e) => copyTeamKey(searchResult.teamKey, e)} className="text-zinc-500 hover:text-indigo-400 transition-colors">
+                        {copiedKey === searchResult.teamKey ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -180,14 +275,14 @@ export default function TeamsPage() {
         )}
       </AnimatePresence>
 
-      {/* Teams List - Vertical */}
+      {/* Teams List */}
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />
           ))}
         </div>
-      ) : teams.length === 0 ? (
+      ) : allTeams === 0 ? (
         <FadeIn delay={0.2}>
           <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-white/5 bg-white/[0.02]">
             <motion.div
@@ -207,58 +302,125 @@ export default function TeamsPage() {
           </div>
         </FadeIn>
       ) : (
-        <StaggerContainer className="space-y-4" staggerDelay={0.08}>
-          {teams.map((team, i) => (
-            <StaggerItem key={team._id || i}>
-              <motion.div
-                whileHover={{ borderColor: "rgba(99,102,241,0.2)", y: -2 }}
-                className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 transition-all"
-              >
-                <div className="flex items-start gap-5">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-xl font-bold text-indigo-300">
-                    {team.teamName?.[0]?.toUpperCase() || "T"}
+        <div className="space-y-8">
+          {/* Admin Teams Section */}
+          {adminTeams.length > 0 && (
+            <FadeIn delay={0.1}>
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                    <Shield className="h-4 w-4 text-amber-400" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h3 className="text-lg font-semibold text-white">{team.teamName}</h3>
-                    </div>
-                    <p className="text-sm text-zinc-400 mt-1">{team.teamDescription || "No description"}</p>
-                    <div className="flex items-center gap-4 mt-3 flex-wrap">
-                      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                        <Key className="h-3 w-3" />
-                        <span className="font-mono">{team.teamKey}</span>
-                      </div>
-                      {team.createdAt && (
-                        <div className="text-xs text-zinc-600">
-                          Created {new Date(team.createdAt).toLocaleDateString()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => openEdit(team)}
-                      className="rounded-xl p-2.5 text-zinc-400 hover:bg-white/10 hover:text-white transition-all"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setShowDelete(team)}
-                      className="rounded-xl p-2.5 text-zinc-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </motion.button>
+                  <div>
+                    <h2 className="text-base font-semibold text-white">Teams You Manage</h2>
+                    <p className="text-xs text-zinc-500">{adminTeams.length} team{adminTeams.length !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
-              </motion.div>
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
+                <StaggerContainer className="space-y-3" staggerDelay={0.06}>
+                  {adminTeams.map((team, i) => (
+                    <StaggerItem key={team._id || i}>
+                      <TeamCard team={team} isAdmin={true} />
+                    </StaggerItem>
+                  ))}
+                </StaggerContainer>
+              </div>
+            </FadeIn>
+          )}
+
+          {/* Member Teams Section */}
+          {memberTeams.length > 0 && (
+            <FadeIn delay={0.2}>
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10">
+                    <UserCheck className="h-4 w-4 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-white">Teams You&apos;re a Member Of</h2>
+                    <p className="text-xs text-zinc-500">{memberTeams.length} team{memberTeams.length !== 1 ? "s" : ""}</p>
+                  </div>
+                </div>
+                <StaggerContainer className="space-y-3" staggerDelay={0.06}>
+                  {memberTeams.map((team, i) => (
+                    <StaggerItem key={team._id || i}>
+                      <TeamCard team={team} isAdmin={false} />
+                    </StaggerItem>
+                  ))}
+                </StaggerContainer>
+              </div>
+            </FadeIn>
+          )}
+        </div>
       )}
+
+      {/* Team Detail Card Modal */}
+      <AnimatePresence>
+        {selectedTeam && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTeam(null)} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-900 p-8 shadow-2xl"
+            >
+              <button onClick={() => setSelectedTeam(null)} className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"><X className="h-5 w-5" /></button>
+              <div className="flex items-center gap-5 mb-6">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-2xl font-bold text-indigo-300">
+                  {selectedTeam.teamName?.[0]?.toUpperCase() || "T"}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">{selectedTeam.teamName}</h2>
+                  <p className="text-sm text-zinc-400 mt-1">{selectedTeam.teamDescription || "No description"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
+                  <label className="block text-xs font-medium text-zinc-500 mb-2 uppercase tracking-wider">Team Key</label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-mono font-bold text-white tracking-wider">{selectedTeam.teamKey}</span>
+                    <button
+                      onClick={(e) => copyTeamKey(selectedTeam.teamKey, e)}
+                      className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-zinc-400 hover:bg-white/10 hover:text-white transition-all"
+                    >
+                      {copiedKey === selectedTeam.teamKey ? (
+                        <><Check className="h-4 w-4 text-green-400" /> Copied</>
+                      ) : (
+                        <><Copy className="h-4 w-4" /> Copy</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {selectedTeam.createdAt && (
+                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
+                    <label className="block text-xs font-medium text-zinc-500 mb-1 uppercase tracking-wider">Created</label>
+                    <p className="text-sm text-white">{new Date(selectedTeam.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                  </div>
+                )}
+
+                {selectedTeam.members && (
+                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
+                    <label className="block text-xs font-medium text-zinc-500 mb-1 uppercase tracking-wider">Members</label>
+                    <p className="text-sm text-white">{selectedTeam.members.length || 0} member{(selectedTeam.members?.length || 0) !== 1 ? "s" : ""}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => setSelectedTeam(null)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 text-sm text-zinc-400 hover:text-white transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Create Team Modal */}
       <AnimatePresence>

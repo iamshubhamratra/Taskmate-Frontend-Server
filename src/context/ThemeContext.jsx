@@ -15,7 +15,16 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     if (!mounted) return;
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+      document.body.style.backgroundColor = "";
+      document.body.style.color = "";
+    } else {
+      root.classList.remove("dark");
+      document.body.style.backgroundColor = "#f8f9fa";
+      document.body.style.color = "#1a1a2e";
+    }
     localStorage.setItem("taskmate-theme", theme);
   }, [theme, mounted]);
 

@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { FadeIn, GlowButton, StaggerContainer, StaggerItem } from "@/components/animations";
 import {
   User, Mail, Briefcase, Shield, Camera, Edit3, Save, X, Sparkles,
-  Calendar, MapPin, Link as LinkIcon, Bell, Lock, Palette,
+  Calendar, MapPin, Bell, Lock, Palette, Crown, ArrowUpRight,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -58,7 +58,6 @@ export default function ProfilePage() {
     { icon: Bell, label: "Notifications", desc: "Manage notification preferences" },
     { icon: Lock, label: "Security", desc: "Two-factor auth & sessions" },
     { icon: Palette, label: "Appearance", desc: "Theme & display settings" },
-    { icon: LinkIcon, label: "Integrations", desc: "Connect external services" },
   ];
 
   return (
@@ -98,41 +97,49 @@ export default function ProfilePage() {
               </motion.div>
 
               <div className="flex-1 sm:mb-1">
-                <h1 className="text-2xl font-bold text-white">{user?.name || "User"}</h1>
-                <p className="text-sm text-zinc-400">{user?.designation || "Team Member"}</p>
-              </div>
+                  <h1 className="text-3xl font-bold text-white">{user?.name || "User"}</h1>
+                  <p className="text-base text-zinc-400">{user?.designation || "Team Member"}</p>
+                </div>
 
-              <div className="sm:mb-1">
-                {!editing ? (
+                <div className="sm:mb-1 flex items-center gap-3">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(168,85,247,0.3)" }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setEditing(true)}
-                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-zinc-300 transition-all hover:bg-white/10 hover:text-white"
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 text-sm font-semibold text-white transition-all"
                   >
-                    <Edit3 className="h-4 w-4" /> Edit Profile
+                    <Crown className="h-4 w-4" /> Upgrade Plan
+                    <ArrowUpRight className="h-3.5 w-3.5" />
                   </motion.button>
-                ) : (
-                  <div className="flex gap-2">
+                  {!editing ? (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={handleSave}
-                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white"
+                      onClick={() => setEditing(true)}
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-medium text-zinc-300 transition-all hover:bg-white/10 hover:text-white"
                     >
-                      <Save className="h-4 w-4" /> Save
+                      <Edit3 className="h-4 w-4" /> Edit Profile
                     </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setEditing(false)}
-                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-zinc-400 hover:text-white transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </motion.button>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleSave}
+                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white"
+                      >
+                        <Save className="h-4 w-4" /> Save
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setEditing(false)}
+                        className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-zinc-400 hover:text-white transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </motion.button>
+                    </div>
+                  )}
+                </div>
             </div>
           </div>
         </div>
@@ -142,10 +149,10 @@ export default function ProfilePage() {
         {/* Profile Details */}
         <FadeIn delay={0.1} className="lg:col-span-2">
           <div className="rounded-2xl border border-white/5 dark:border-white/5 bg-white/[0.02] dark:bg-white/[0.02] p-6 space-y-6">
-            <h3 className="text-base font-semibold text-white flex items-center gap-2">
-              <User className="h-4 w-4 text-indigo-400" />
-              Personal Information
-            </h3>
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <User className="h-5 w-5 text-indigo-400" />
+                Personal Information
+              </h3>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <div>

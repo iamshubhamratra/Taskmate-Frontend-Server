@@ -30,7 +30,8 @@ export const api = {
   // Teams
   createTeam: (body) => request("/taskmate/team/createTeam", { method: "POST", body: JSON.stringify(body) }),
   deleteTeam: (body) => request("/taskmate/team/deleteTeam", { method: "POST", body: JSON.stringify(body) }),
-  updateTeam: (body) => request("/taskmate/team/updateTeam", { method: "POST", body: JSON.stringify(body) }),
+  updateTeam: (body) => request("/taskmate/team/updateTeam", { method: "PUT", body: JSON.stringify(body) }),
   searchTeam: (body) => request("/taskmate/team/searchTeam", { method: "POST", body: JSON.stringify(body) }),
   listAdminTeams: () => request("/taskmate/team/listAdminTeams", { method: "GET" }),
+  listMemberTeams: () => request("/taskmate/team/listMemberTeams", { method: "GET" }),
 };

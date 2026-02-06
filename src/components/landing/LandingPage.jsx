@@ -138,6 +138,31 @@ function Navbar() {
 }
 
 function HeroSection() {
+  const [activeTab, setActiveTab] = useState("Dashboard");
+  const tabs = ["Dashboard", "Teams", "Tasks", "Profile", "Settings"];
+  const availableTabs = ["Dashboard", "Teams", "Profile"];
+
+  const tabContent = {
+    Dashboard: [
+      { title: "Design Sprint Review", status: "In Progress", color: "bg-yellow-500" },
+      { title: "Backend API Integration", status: "Completed", color: "bg-green-500" },
+      { title: "User Testing Round 2", status: "Pending", color: "bg-zinc-500" },
+      { title: "Deploy v2.0 Release", status: "In Review", color: "bg-blue-500" },
+    ],
+    Teams: [
+      { title: "Engineering Team", status: "12 Members", color: "bg-indigo-500" },
+      { title: "Design Team", status: "8 Members", color: "bg-pink-500" },
+      { title: "Marketing Team", status: "6 Members", color: "bg-green-500" },
+      { title: "Product Team", status: "5 Members", color: "bg-amber-500" },
+    ],
+    Profile: [
+      { title: "Profile Settings", status: "Updated", color: "bg-green-500" },
+      { title: "Notification Preferences", status: "Configured", color: "bg-blue-500" },
+      { title: "Security Settings", status: "2FA Enabled", color: "bg-emerald-500" },
+      { title: "Appearance", status: "Dark Mode", color: "bg-purple-500" },
+    ],
+  };
+
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-24">
       {/* Animated gradient background */}
@@ -227,7 +252,7 @@ function HeroSection() {
         </div>
       </FadeIn>
 
-      {/* Hero visual - Dashboard mockup */}
+      {/* Hero visual - Interactive Dashboard mockup */}
       <FadeIn delay={1.0}>
         <div className="relative mt-20 w-full max-w-5xl">
           <div className="absolute -inset-4 rounded-2xl bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 blur-xl" />
@@ -239,42 +264,71 @@ function HeroSection() {
               <span className="ml-3 text-xs text-zinc-500">TaskMate Dashboard</span>
             </div>
             <div className="grid grid-cols-4 gap-4 p-6">
-              <div className="col-span-1 space-y-3">
-                {["Dashboard", "Teams", "Tasks", "Profile", "Settings"].map((item, i) => (
-                  <motion.div
-                    key={item}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 1.2 + i * 0.1 }}
-                    className={`rounded-lg px-3 py-2 text-xs ${i === 0 ? "bg-indigo-500/20 text-indigo-300" : "text-zinc-500 hover:bg-white/5"}`}
-                  >
-                    {item}
-                  </motion.div>
-                ))}
+              <div className="col-span-1 space-y-1">
+                {tabs.map((tab) => {
+                  const isActive = activeTab === tab;
+                  const isAvailable = availableTabs.includes(tab);
+                  return (
+                    <motion.button
+                      key={tab}
+                      onClick={() => isAvailable ? setActiveTab(tab) : null}
+                      whileHover={isAvailable ? { x: 4 } : {}}
+                      className={`w-full text-left rounded-lg px-3 py-2 text-xs transition-all ${
+                        isActive
+                          ? "bg-indigo-500/20 text-indigo-300"
+                          : isAvailable
+                            ? "text-zinc-400 hover:bg-white/5 hover:text-white cursor-pointer"
+                            : "text-zinc-600 cursor-default"
+                      }`}
+                    >
+                      {tab}
+                    </motion.button>
+                  );
+                })}
               </div>
-              <div className="col-span-3 space-y-3">
-                {[
-                  { title: "Design Sprint Review", status: "In Progress", color: "bg-yellow-500" },
-                  { title: "Backend API Integration", status: "Completed", color: "bg-green-500" },
-                  { title: "User Testing Round 2", status: "Pending", color: "bg-zinc-500" },
-                  { title: "Deploy v2.0 Release", status: "In Review", color: "bg-blue-500" },
-                ].map((task, i) => (
-                  <motion.div
-                    key={task.title}
-                    initial={{ opacity: 0, y: 15 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 1.3 + i * 0.15 }}
-                    className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`h-2 w-2 rounded-full ${task.color}`} />
-                      <span className="text-sm text-zinc-300">{task.title}</span>
-                    </div>
-                    <span className="text-xs text-zinc-500">{task.status}</span>
-                  </motion.div>
-                ))}
+              <div className="col-span-3 space-y-3 min-h-[200px]">
+                <AnimatePresence mode="wait">
+                  {availableTabs.includes(activeTab) ? (
+                    <motion.div
+                      key={activeTab}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-3"
+                    >
+                      {tabContent[activeTab]?.map((task, i) => (
+                        <motion.div
+                          key={task.title}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.08 }}
+                          className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] p-4"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`h-2 w-2 rounded-full ${task.color}`} />
+                            <span className="text-sm text-zinc-300">{task.title}</span>
+                          </div>
+                          <span className="text-xs text-zinc-500">{task.status}</span>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="coming-soon"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="flex flex-col items-center justify-center h-[200px] text-center"
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/10 mb-3">
+                        <Rocket className="h-6 w-6 text-indigo-400" />
+                      </div>
+                      <p className="text-sm font-medium text-white">Coming Soon</p>
+                      <p className="text-xs text-zinc-500 mt-1 max-w-xs">This feature is currently under development. Stay tuned for updates!</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -300,30 +354,14 @@ function HeroSection() {
 }
 
 function TrustedBySection() {
-  const companies = ["Vercel", "Stripe", "Linear", "Notion", "Figma", "GitHub", "Slack", "Discord"];
   return (
     <section className="py-16 px-6 border-y border-white/5">
       <div className="mx-auto max-w-7xl">
         <FadeIn>
-          <p className="text-center text-xs uppercase tracking-widest text-zinc-600 mb-10">
+          <p className="text-center text-xs uppercase tracking-widest text-zinc-600">
             Trusted by innovative teams worldwide
           </p>
         </FadeIn>
-        <div className="relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-black to-transparent z-10" />
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-black to-transparent z-10" />
-          <motion.div
-            animate={{ x: [0, -1200] }}
-            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-            className="flex gap-16 items-center whitespace-nowrap"
-          >
-            {[...companies, ...companies, ...companies].map((name, i) => (
-              <span key={i} className="text-xl font-bold text-zinc-700 select-none">
-                {name}
-              </span>
-            ))}
-          </motion.div>
-        </div>
       </div>
     </section>
   );

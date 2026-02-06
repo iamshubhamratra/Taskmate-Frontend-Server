@@ -114,27 +114,35 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {teams.slice(0, 5).map((team, i) => (
-                  <motion.div
-                    key={team._id || i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    whileHover={{ borderColor: "rgba(99,102,241,0.2)" }}
-                    className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4 transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-sm font-bold text-indigo-300">
-                        {team.teamName?.[0]?.toUpperCase() || "T"}
+                  {teams.slice(0, 5).map((team, i) => (
+                    <motion.div
+                      key={team._id || i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      whileHover={{ y: -2, borderColor: "rgba(99,102,241,0.3)", backgroundColor: "rgba(255,255,255,0.04)" }}
+                      className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-4 transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center gap-4">
+                        <motion.div
+                          whileHover={{ scale: 1.1, rotate: 5 }}
+                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-sm font-bold text-indigo-300"
+                        >
+                          {team.teamName?.[0]?.toUpperCase() || "T"}
+                        </motion.div>
+                        <div>
+                          <div className="text-sm font-medium text-white">{team.teamName}</div>
+                          <div className="text-xs text-zinc-500">{team.teamDescription || "No description"}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-white">{team.teamName}</div>
-                        <div className="text-xs text-zinc-500">{team.teamDescription || "No description"}</div>
-                      </div>
-                    </div>
-                    <div className="text-[10px] font-mono text-zinc-600 bg-white/5 rounded-lg px-2 py-1">{team.teamKey}</div>
-                  </motion.div>
-                ))}
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        className="text-xs font-mono text-zinc-500 bg-white/5 rounded-lg px-3 py-1.5 border border-white/5 hover:border-indigo-500/20 transition-colors"
+                      >
+                        {team.teamKey}
+                      </motion.div>
+                    </motion.div>
+                  ))}
               </div>
             )}
           </div>
