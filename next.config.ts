@@ -1,4 +1,3 @@
-import type { NextConfig } from "next";
 import path from "node:path";
 
 const LOADER = path.resolve(
@@ -6,26 +5,23 @@ const LOADER = path.resolve(
   "src/visual-edits/component-tagger-loader.js"
 );
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
       { protocol: "http", hostname: "**" },
     ],
   },
+
   typescript: {
     ignoreBuildErrors: true,
   },
+
   eslint: {
     ignoreDuringBuilds: true,
   },
-  turbopack: {
-    rules: {
-      "*.{jsx,tsx}": {
-        loaders: [LOADER],
-      },
-    },
-  },
+
+  // Turbopack REMOVED (fixes runtime crash)
 };
 
 export default nextConfig;
