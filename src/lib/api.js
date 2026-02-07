@@ -47,4 +47,10 @@ export const api = {
   searchTeam: (body) => request("/taskmate/team/searchTeam", { method: "POST", body: JSON.stringify(body) }),
   listAdminTeams: () => request("/taskmate/team/listAdminTeams", { method: "GET" }),
   listMemberTeams: () => request("/taskmate/team/listMemberTeams", { method: "GET" }),
+  
+  // User
+  updateProfile:(body) => request("/taskmate/user/updateProfile", {method: "PATCH", body: JSON.stringify(body),}),
+
 };
+
+export default api;

@@ -37,43 +37,68 @@ export default function TeamsPage() {
     );
   };
 
-  const fetchTeams = useCallback(async () => {
-    try {
-      const [adminRes, memberRes] = await Promise.all([
-        api.listAdminTeams(),
-        api.listMemberTeams().catch(() => ({ ok: false })),
-      ]);
-      if (adminRes.ok && adminRes.data?.data) setAdminTeams(adminRes.data.data);
-      if (memberRes.ok && memberRes.data?.data) {
-        const adminKeys = new Set((adminRes.data?.data || []).map((t) => t.teamKey));
-        setMemberTeams((memberRes.data.data || []).filter((t) => !adminKeys.has(t.teamKey)));
-      }
-    } catch { }
+ const fetchTeams = useCallback(async () => {
+  try {
+    const [adminRes, memberRes] = await Promise.all([
+      api.listAdminTeams(),
+      api.listMemberTeams().catch(() => ({ ok: false })),
+    ]);
+
+    setAdminTeams([]);
+    setMemberTeams([]);
+
+    if (adminRes.ok && Array.isArray(adminRes.data?.data)) {
+      setAdminTeams(adminRes.data.data);
+    }
+
+    if (memberRes.ok && Array.isArray(memberRes.data?.data)) {
+      const adminKeys = new Set(
+        (adminRes.data?.data || []).map((t) => t.teamKey)
+      );
+
+      setMemberTeams(
+        memberRes.data.data.filter((t) => !adminKeys.has(t.teamKey))
+      );
+    }
+  } catch (err) {
+    console.error("fetchTeams error", err);
+  } finally {
     setLoading(false);
-  }, []);
+  }
+}, []);
+
+
 
   useEffect(() => { fetchTeams(); }, [fetchTeams]);
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setError("");
-    if (teamNameExists(createForm.teamName)) {
-      setError("Team already exists.");
+const handleCreate = async (e) => {
+  e.preventDefault();
+  setError("");
+  setCreateLoading(true);
+
+  try {
+    const res = await api.createTeam(createForm);
+
+    if (!res.ok) {
+      setError(res.data?.message || "Failed to create team");
       return;
     }
-    setCreateLoading(true);
-    try {
-      const res = await api.createTeam(createForm);
-      if (res.ok) {
-        setShowCreate(false);
-        setCreateForm({ teamName: "", teamDescription: "" });
-        fetchTeams();
-      } else {
-        setError(res.data?.message || "Failed to create team");
-      }
-    } catch { setError("Network error"); }
+
+    setShowCreate(false);
+    setCreateForm({ teamName: "", teamDescription: "" });
+
+    // ✅ FORCE RELOAD TEAMS FROM BACKEND
+    setLoading(true);
+    await fetchTeams();
+
+  } catch (err) {
+    setError("Network error");
+  } finally {
     setCreateLoading(false);
-  };
+  }
+};
+
+
 
   const handleDelete = async (teamKey) => {
     setDeleteError("");
@@ -93,46 +118,46 @@ export default function TeamsPage() {
     setDeleteLoading(false);
   };
 
- const handleEdit = async (e) => {
-  e.preventDefault();
-  setEditLoading(true);
-  setError("");
+  const handleEdit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    setError("");
 
-  const payload = {
-    teamKey: showEdit.teamKey,
-  };
+    const payload = {
+      teamKey: showEdit.teamKey,
+    };
 
-  // send ONLY if changed
-  if (editForm.teamName.trim() !== showEdit.teamName) {
-    payload.newTeamName = editForm.teamName.trim();
-  }
-
-  if ((editForm.teamDescription || "") !== (showEdit.teamDescription || "")) {
-    payload.newTeamDescription = editForm.teamDescription.trim();
-  }
-
-  // nothing changed
-  if (!payload.newTeamName && !payload.newTeamDescription) {
-    setError("No changes detected");
-    setEditLoading(false);
-    return;
-  }
-
-  try {
-    const res = await api.updateTeam(payload);
-
-    if (res.ok) {
-      setShowEdit(null);
-      fetchTeams();
-    } else {
-      setError(res.data?.message || "Failed to update team");
+    // send ONLY if changed
+    if (editForm.teamName.trim() !== showEdit.teamName) {
+      payload.newTeamName = editForm.teamName.trim();
     }
-  } catch {
-    setError("Network error");
-  }
 
-  setEditLoading(false);
-};
+    if ((editForm.teamDescription || "") !== (showEdit.teamDescription || "")) {
+      payload.newTeamDescription = editForm.teamDescription.trim();
+    }
+
+    // nothing changed
+    if (!payload.newTeamName && !payload.newTeamDescription) {
+      setError("No changes detected");
+      setEditLoading(false);
+      return;
+    }
+
+    try {
+      const res = await api.updateTeam(payload);
+
+      if (res.ok) {
+        setShowEdit(null);
+        fetchTeams();
+      } else {
+        setError(res.data?.message || "Failed to update team");
+      }
+    } catch {
+      setError("Network error");
+    }
+
+    setEditLoading(false);
+  };
 
 
   const handleSearch = async (e) => {
@@ -183,7 +208,8 @@ export default function TeamsPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <h3 className="text-lg font-semibold text-white">{team.teamName}</h3>
             {isAdmin && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-[11px] font-medium text-amber-400">
+             <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 dark:bg-indigo-400/10 border border-indigo-500/20 dark:border-indigo-400/20 px-2.5 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
+
                 <Crown className="h-3 w-3" /> Admin
               </span>
             )}

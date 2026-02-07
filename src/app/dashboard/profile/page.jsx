@@ -1,8 +1,11 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { FadeIn, GlowButton, StaggerContainer, StaggerItem } from "@/components/animations";
+import api from "@/lib/api";
+// import { useState, useRef, useEffect } from "react";
+
 import {
   User, Mail, Briefcase, Shield, Camera, Edit3, Save, X, Sparkles,
   Calendar, MapPin, Bell, Lock, Palette, Crown, ArrowUpRight,
@@ -13,6 +16,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [error, setError] = useState("");
   const fileRef = useRef(null);
   const [form, setForm] = useState({
     name: user?.name || "",
@@ -23,14 +27,55 @@ export default function ProfilePage() {
     website: user?.website || "",
   });
 
-  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+  useEffect(() => {
+  if (user) {
+    setForm({
+      name: user.name || "",
+      email: user.email || "",
+      designation: user.designation || "",
+      bio: user.bio || "",
+      location: user.location || "",
+      website: user.website || "",
+    });
+  }
+}, [user]);
 
-  const handleSave = () => {
-    const updated = { ...user, ...form };
-    setUser(updated);
-    localStorage.setItem("taskmate-user", JSON.stringify(updated));
-    setEditing(false);
+
+  const update = (field) => (e) => {
+    setError("");
+    setForm({ ...form, [field]: e.target.value });
   };
+
+  const handleSave = async () => {
+    setError("");
+
+    const payload = {};
+
+    if (form.name !== user.name && form.name.trim() !== "") { payload.name = form.name; }
+    if (form.designation !== user.designation && form.designation.trim() !== "") { payload.designation = form.designation; }
+    if (form.bio !== user.bio && form.bio.trim() !== "") { payload.bio = form.bio; }
+    if (form.location !== user.location && form.location.trim() !== "") { payload.location = form.location; }
+
+    if (Object.keys(payload).length === 0) {
+      setError("No changes detected");
+      return;
+    }
+
+    try {
+      const res = await api.updateProfile(payload);
+
+      if (res.ok) {
+        setUser(res.data.data);
+        localStorage.setItem("taskmate-user", JSON.stringify(res.data.data));
+        setEditing(false);
+      } else {
+        setError(res.data?.message || "Update failed");
+      }
+    } catch {
+      setError("Network error");
+    }
+  };
+
 
   const handlePhotoClick = () => {
     setShowPhotoModal(true);
@@ -97,49 +142,61 @@ export default function ProfilePage() {
               </motion.div>
 
               <div className="flex-1 sm:mb-1">
-                  <h1 className="text-3xl font-bold text-white">{user?.name || "User"}</h1>
-                  <p className="text-base text-zinc-400">{user?.designation || "Team Member"}</p>
-                </div>
+                <h1 className="text-3xl font-bold text-white">{user?.name || "User"}</h1>
+                <p className="text-base text-zinc-400">{user?.designation || ""}</p>
+              </div>
 
-                <div className="sm:mb-1 flex items-center gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(168,85,247,0.3)" }}
+              <div className="sm:mb-1 flex items-center gap-3">
+                {/* <motion.button */}
+                {/* whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(168,85,247,0.3)" }}
                     whileTap={{ scale: 0.98 }}
                     className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 text-sm font-semibold text-white transition-all"
+                  > */}
+                {/* <Crown className="h-4 w-4" /> Upgrade Plan */}
+                {/* <ArrowUpRight className="h-3.5 w-3.5" /> */}
+                {/* </motion.button> */}
+                {!editing ? (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setEditing(true);
+                      setError("");
+                    }}
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-medium text-zinc-300 transition-all hover:bg-white/10 hover:text-white"
                   >
-                    <Crown className="h-4 w-4" /> Upgrade Plan
-                    <ArrowUpRight className="h-3.5 w-3.5" />
+                    <Edit3 className="h-4 w-4" /> Edit Profile
                   </motion.button>
-                  {!editing ? (
+                ) : (
+                  <div className="flex gap-2">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setEditing(true)}
-                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-medium text-zinc-300 transition-all hover:bg-white/10 hover:text-white"
+                      onClick={handleSave}
+                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white"
                     >
-                      <Edit3 className="h-4 w-4" /> Edit Profile
+                      <Save className="h-4 w-4" /> Save
                     </motion.button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={handleSave}
-                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white"
-                      >
-                        <Save className="h-4 w-4" /> Save
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setEditing(false)}
-                        className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-zinc-400 hover:text-white transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </motion.button>
-                    </div>
-                  )}
-                </div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setError("");
+                        setEditing(false);
+                      }}
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-zinc-400 hover:text-white transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </motion.button>
+                  </div>
+                )}
+                {error && (
+                  <p className="mt-2 text-sm text-red-400">
+                    {error}
+                  </p>
+                )}
+
+              </div>
             </div>
           </div>
         </div>
@@ -150,9 +207,9 @@ export default function ProfilePage() {
         <FadeIn delay={0.1} className="lg:col-span-2">
           <div className="rounded-2xl border border-white/5 dark:border-white/5 bg-white/[0.02] dark:bg-white/[0.02] p-6 space-y-6">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <User className="h-5 w-5 text-indigo-400" />
-                Personal Information
-              </h3>
+              <User className="h-5 w-5 text-indigo-400" />
+              Personal Information
+            </h3>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <div>

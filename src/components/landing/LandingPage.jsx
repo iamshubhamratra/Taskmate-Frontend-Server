@@ -53,9 +53,8 @@ function Navbar() {
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "border-b border-white/5 bg-black/80 backdrop-blur-xl shadow-lg shadow-black/20" : "bg-transparent"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "border-b border-zinc-200/60 dark:border-white/5 bg-white/80 dark:bg-black/80 backdrop-blur-xl" : "bg-transparent"
+        }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
@@ -273,13 +272,12 @@ function HeroSection() {
                       key={tab}
                       onClick={() => isAvailable ? setActiveTab(tab) : null}
                       whileHover={isAvailable ? { x: 4 } : {}}
-                      className={`w-full text-left rounded-lg px-3 py-2 text-xs transition-all ${
-                        isActive
-                          ? "bg-indigo-500/20 text-indigo-300"
-                          : isAvailable
-                            ? "text-zinc-400 hover:bg-white/5 hover:text-white cursor-pointer"
-                            : "text-zinc-600 cursor-default"
-                      }`}
+                      className={`w-full text-left rounded-lg px-3 py-2 text-xs transition-all ${isActive
+                        ? "bg-indigo-500/20 text-indigo-300"
+                        : isAvailable
+                          ? "text-zinc-400 hover:bg-white/5 hover:text-white cursor-pointer"
+                          : "text-zinc-600 cursor-default"
+                        }`}
                     >
                       {tab}
                     </motion.button>
@@ -438,7 +436,7 @@ function HowItWorksSection() {
                 whileHover={{ borderColor: "rgba(99,102,241,0.2)" }}
                 className="flex items-start gap-6 sm:gap-8 rounded-2xl border border-white/5 bg-white/[0.02] p-6 sm:p-8 transition-all"
               >
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 relative">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 relative">
                   <step.icon className="h-7 w-7 text-indigo-400" />
                   <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white">{step.num}</span>
                 </div>
@@ -465,8 +463,9 @@ function StatsSection() {
   return (
     <section id="stats" className="relative py-24 px-6">
       <div className="mx-auto max-w-5xl">
-        <div className="overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 p-1">
-          <div className="rounded-[22px] bg-black/40 px-8 py-16 backdrop-blur-sm relative overflow-hidden">
+        <div className="overflow-hidden rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-black p-1">
+          <div className="rounded-[22px] bg-zinc-50 dark:bg-zinc-900/80 px-8 py-16 relative overflow-hidden">
+
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
@@ -476,12 +475,18 @@ function StatsSection() {
               {stats.map((s) => (
                 <StaggerItem key={s.label} className="text-center">
                   <div className="flex justify-center mb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20
+">
                       <s.icon className="h-5 w-5 text-indigo-400" />
                     </div>
                   </div>
-                  <div className="text-4xl font-bold text-white lg:text-5xl">{s.value}</div>
-                  <div className="mt-2 text-sm text-zinc-400">{s.label}</div>
+                  <div className="text-4xl font-bold text-zinc-900 dark:text-white lg:text-5xl">
+                    {s.value}
+                  </div>
+                  <div className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    {s.label}
+                  </div>
+
                 </StaggerItem>
               ))}
             </StaggerContainer>
