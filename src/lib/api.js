@@ -1,23 +1,25 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-async function request(endpoint, options = {}) {
-  const config = {
-    credentials: "include", // 🔥 REQUIRED for cookies
+export async function request(url, options = {}) {
+  const res = await fetch(`${API_BASE}${url}`, {
+    credentials: "include", 
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
     ...options,
-  };
-
-  const res = await fetch(`${API_BASE}${endpoint}`, config);
+  });
 
   let data = null;
   try {
     data = await res.json();
   } catch {}
 
-  return { ok: res.ok, status: res.status, data };
+  return {
+    ok: res.ok,
+    status: res.status,
+    data,
+  };
 }
 
 export const api = {
@@ -35,14 +37,14 @@ export const api = {
   // Teams
   createTeam: (body) => request("/taskmate/team/createTeam", { method: "POST", body: JSON.stringify(body) }),
   deleteTeam: (body) => request("/taskmate/team/deleteTeam", { method: "POST", body: JSON.stringify(body) }),
-  updateTeam: (body) => request("/taskmate/team/updateTeam", {method: "PATCH", headers: {"Content-Type": "application/json",}, body: JSON.stringify(body)}),
-  searchTeam: (body) => request("/taskmate/team/searchTeam", { method: "POST", body: JSON.stringify(body) }),
+  updateTeam: (body) => request("/taskmate/team/updateTeam", { method: "PATCH", headers: { "Content-Type": "application/json", }, body: JSON.stringify(body) }),
+  searchTeam: (data) => request("/taskmate/team/searchTeam", {method: "POST",headers: { "Content-Type": "application/json",},body: JSON.stringify(data),credentials: "include",}),
   listAdminTeams: () => request("/taskmate/team/listAdminTeams", { method: "GET" }),
   listMemberTeams: () => request("/taskmate/team/listMemberTeams", { method: "GET" }),
-  
+
   // User
-  updateProfile:(body) => request("/taskmate/user/updateProfile", {method: "PATCH", body: JSON.stringify(body),}),
-  getProfile: () => request("/taskmate/user/profile", { method: "GET" }), 
+  updateProfile: (body) => request("/taskmate/user/updateProfile", { method: "PATCH", body: JSON.stringify(body), }),
+  getProfile: () => request("/taskmate/user/profile", { method: "GET" }),
 };
 
 export default api;

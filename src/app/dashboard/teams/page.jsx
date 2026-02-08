@@ -87,7 +87,6 @@ const handleCreate = async (e) => {
     setShowCreate(false);
     setCreateForm({ teamName: "", teamDescription: "" });
 
-    // ✅ FORCE RELOAD TEAMS FROM BACKEND
     setLoading(true);
     await fetchTeams();
 
