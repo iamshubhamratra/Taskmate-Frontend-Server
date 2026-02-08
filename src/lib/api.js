@@ -1,30 +1,22 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-const getAuthHeaders = () => {
-  if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("taskmate-token");
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
-};
-
 async function request(endpoint, options = {}) {
   const config = {
-    credentials: "include",
+    credentials: "include", // 🔥 REQUIRED for cookies
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
-      ...options.headers,
+      ...(options.headers || {}),
     },
     ...options,
   };
 
   const res = await fetch(`${API_BASE}${endpoint}`, config);
+
   let data = null;
   try {
     data = await res.json();
-  } catch {
-    data = null;
-  }
+  } catch {}
+
   return { ok: res.ok, status: res.status, data };
 }
 

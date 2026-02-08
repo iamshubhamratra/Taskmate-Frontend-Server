@@ -9,7 +9,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on first mount
+  // Restore user from localStorage (UI state only)
   useEffect(() => {
     const saved = localStorage.getItem("taskmate-user");
     if (saved) {
@@ -25,12 +25,14 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     setLoading(true);
 
-    const res = await api.login({ email, password });
+    try {
+      const res = await api.login({ email, password });
 
-    if (res?.data?.success) {
-      // 🔥 cookie is already set by backend
+      if (!res?.data?.success) {
+        return res; // wrong password handled by UI
+      }
 
-      // fetch profile using cookie
+      // 🔥 cookie already set by backend
       const profileRes = await api.getProfile();
 
       if (profileRes?.data?.success) {
@@ -40,13 +42,15 @@ export function AuthProvider({ children }) {
           JSON.stringify(profileRes.data.data)
         );
       }
+
+      return res;
+    } catch (err) {
+      console.error("Login error:", err);
+      throw err;
+    } finally {
+      setLoading(false); // 🔥 ALWAYS stops loader
     }
-
-    setLoading(false);
-    return res;
   };
-
-
 
   const signup = async (data) => {
     return api.signup(data);
@@ -55,10 +59,9 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await api.logout();
-    } catch { }
+    } catch {}
     setUser(null);
     localStorage.removeItem("taskmate-user");
-    localStorage.removeItem("taskmate-token");
   };
 
   return (
