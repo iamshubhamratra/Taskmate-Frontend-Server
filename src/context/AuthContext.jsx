@@ -23,28 +23,29 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-  const res = await api.login({ email, password });
+    setLoading(true);
 
-  if (res?.ok) {
-    const token = res.data?.token || res.data?.data?.token;
-    if (token) {
-      localStorage.setItem("taskmate-token", token);
+    const res = await api.login({ email, password });
+
+    if (res?.data?.success) {
+      // 🔥 cookie is already set by backend
+
+      // fetch profile using cookie
+      const profileRes = await api.getProfile();
+
+      if (profileRes?.data?.success) {
+        setUser(profileRes.data.data);
+        localStorage.setItem(
+          "taskmate-user",
+          JSON.stringify(profileRes.data.data)
+        );
+      }
     }
 
-    // 🔥 FETCH FULL PROFILE
-    const profileRes = await api.getProfile();
+    setLoading(false);
+    return res;
+  };
 
-    if (profileRes?.ok) {
-      setUser(profileRes.data.data);
-      localStorage.setItem(
-        "taskmate-user",
-        JSON.stringify(profileRes.data.data)
-      );
-    }
-  }
-
-  return res;
-};
 
 
   const signup = async (data) => {
