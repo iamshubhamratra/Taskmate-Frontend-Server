@@ -42,7 +42,7 @@ export const api = {
   
   // User
   updateProfile:(body) => request("/taskmate/user/updateProfile", {method: "PATCH", body: JSON.stringify(body),}),
-
+  getProfile: () => request("/taskmate/user/profile", { method: "GET" }), 
 };
 
 export default api;

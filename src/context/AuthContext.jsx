@@ -9,7 +9,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore user from localStorage (UI state only)
   useEffect(() => {
     const saved = localStorage.getItem("taskmate-user");
     if (saved) {
@@ -28,32 +27,38 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.login({ email, password });
 
-      if (!res?.data?.success) {
-        return res; // wrong password handled by UI
+      // ✅ FIXED: Check both ok and status
+      if (!res.ok || res?.data?.status !== "success") {
+        setLoading(false); 
+        return res;
       }
 
-      // 🔥 cookie already set by backend
-      const profileRes = await api.getProfile();
-
-      if (profileRes?.data?.success) {
-        setUser(profileRes.data.data);
-        localStorage.setItem(
-          "taskmate-user",
-          JSON.stringify(profileRes.data.data)
-        );
+      // ✅ CORRECT: Access user from nested data
+      if (res.data?.data?.user) {  
+        setUser(res.data.data.user);
+        localStorage.setItem("taskmate-user", JSON.stringify(res.data.data.user));
       }
 
+      setLoading(false); 
       return res;
+      
     } catch (err) {
       console.error("Login error:", err);
+      setLoading(false); 
       throw err;
-    } finally {
-      setLoading(false); // 🔥 ALWAYS stops loader
     }
   };
 
   const signup = async (data) => {
-    return api.signup(data);
+    setLoading(true);
+    try {
+      const res = await api.signup(data);
+      setLoading(false);
+      return res;
+    } catch (err) {
+      setLoading(false);
+      throw err;
+    }
   };
 
   const logout = async () => {
