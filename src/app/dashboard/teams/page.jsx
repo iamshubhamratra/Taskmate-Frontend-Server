@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
@@ -7,17 +8,19 @@ import { FadeIn, GlowButton, StaggerContainer, StaggerItem } from "@/components/
 import {
   Users, Plus, Search, Trash2, Edit3, X, Loader2, Key, AlertTriangle,
   Save, Copy, Check, Shield, UserCheck, ChevronRight, Crown,
+  UserPlus, Bell, CheckCheck, XCircle, MessageSquare, Clock,
 } from "lucide-react";
 
 export default function TeamsPage() {
   const { user } = useAuth();
   const [adminTeams, setAdminTeams] = useState([]);
   const [memberTeams, setMemberTeams] = useState([]);
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showDelete, setShowDelete] = useState(null);
   const [showEdit, setShowEdit] = useState(null);
-  const [selectedTeam, setSelectedTeam] = useState(null);
+  // const [selectedTeam, setSelectedTeam] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -29,6 +32,20 @@ export default function TeamsPage() {
   const [error, setError] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [copiedKey, setCopiedKey] = useState(null);
+
+  // Request join state
+  const [requestJoinLoading, setRequestJoinLoading] = useState(false);
+  const [requestJoinMessage, setRequestJoinMessage] = useState("");
+  const [requestJoinError, setRequestJoinError] = useState("");
+  const [requestJoinSuccess, setRequestJoinSuccess] = useState("");
+  const [showRequestJoinModal, setShowRequestJoinModal] = useState(null);
+
+  // Pending requests state
+  const [showPendingModal, setShowPendingModal] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [acceptDeclineLoading, setAcceptDeclineLoading] = useState(null);
+
   const normalizeteamName = (value) => value.trim().toLowerCase();
   const teamNameExists = (name, ignoreKey = null) => {
     const normalized = normalizeteamName(name);
@@ -37,67 +54,45 @@ export default function TeamsPage() {
     );
   };
 
- const fetchTeams = useCallback(async () => {
-  try {
-    const [adminRes, memberRes] = await Promise.all([
-      api.listAdminTeams(),
-      api.listMemberTeams().catch(() => ({ ok: false })),
-    ]);
-
-    setAdminTeams([]);
-    setMemberTeams([]);
-
-    if (adminRes.ok && Array.isArray(adminRes.data?.data)) {
-      setAdminTeams(adminRes.data.data);
-    }
-
-    if (memberRes.ok && Array.isArray(memberRes.data?.data)) {
-      const adminKeys = new Set(
-        (adminRes.data?.data || []).map((t) => t.teamKey)
-      );
-
-      setMemberTeams(
-        memberRes.data.data.filter((t) => !adminKeys.has(t.teamKey))
-      );
-    }
-  } catch (err) {
-    console.error("fetchTeams error", err);
-  } finally {
-    setLoading(false);
-  }
-}, []);
-
-
-
-  useEffect(() => { fetchTeams(); }, [fetchTeams]);
-
-const handleCreate = async (e) => {
-  e.preventDefault();
-  setError("");
-  setCreateLoading(true);
-
-  try {
-    const res = await api.createTeam(createForm);
-
-    if (!res.ok) {
-      setError(res.data?.message || "Failed to create team");
-      return;
-    }
-
-    setShowCreate(false);
-    setCreateForm({ teamName: "", teamDescription: "" });
-
+  const fetchTeams = async () => {
     setLoading(true);
-    await fetchTeams();
+    try {
+      const adminRes = await api.listAdminTeams();
+      const memberRes = await api.listMemberTeams();
 
-  } catch (err) {
-    setError("Network error");
-  } finally {
-    setCreateLoading(false);
-  }
-};
+      setAdminTeams(adminRes.ok ? adminRes.data.data : []);
+      setMemberTeams(memberRes.ok ? memberRes.data.data : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchTeams();
+  }, []);
 
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setError("");
+    setCreateLoading(true);
+    try {
+      const res = await api.createTeam(createForm);
+      if (!res.ok) {
+        setError(res.data?.message || "Failed to create team");
+        return;
+      }
+      setShowCreate(false);
+      setCreateForm({ teamName: "", teamDescription: "" });
+      setLoading(true);
+      await fetchTeams();
+    } catch {
+      setError("Network error");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
 
   const handleDelete = async (teamKey) => {
     setDeleteError("");
@@ -122,20 +117,13 @@ const handleCreate = async (e) => {
     setEditLoading(true);
     setError("");
 
-    const payload = {
-      teamKey: showEdit.teamKey,
-    };
-
-    // send ONLY if changed
+    const payload = { teamKey: showEdit.teamKey };
     if (editForm.teamName.trim() !== showEdit.teamName) {
       payload.newTeamName = editForm.teamName.trim();
     }
-
     if ((editForm.teamDescription || "") !== (showEdit.teamDescription || "")) {
       payload.newTeamDescription = editForm.teamDescription.trim();
     }
-
-    // nothing changed
     if (!payload.newTeamName && !payload.newTeamDescription) {
       setError("No changes detected");
       setEditLoading(false);
@@ -144,7 +132,6 @@ const handleCreate = async (e) => {
 
     try {
       const res = await api.updateTeam(payload);
-
       if (res.ok) {
         setShowEdit(null);
         fetchTeams();
@@ -154,16 +141,16 @@ const handleCreate = async (e) => {
     } catch {
       setError("Network error");
     }
-
     setEditLoading(false);
   };
-
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setSearching(true);
     setSearchResult(null);
+    setRequestJoinError("");
+    setRequestJoinSuccess("");
     try {
       const res = await api.searchTeam({ teamKey: searchQuery.trim() });
       if (res.ok && res.data?.data) {
@@ -173,6 +160,80 @@ const handleCreate = async (e) => {
       }
     } catch { setSearchResult("not_found"); }
     setSearching(false);
+  };
+
+  // Check if current user is already a member/admin of the searched team
+  const isAlreadyMember = (teamKey) => {
+    return [...adminTeams, ...memberTeams].some((t) => t.teamKey === teamKey);
+  };
+
+  const openRequestJoin = (team, e) => {
+    e?.stopPropagation();
+    setRequestJoinMessage("");
+    setRequestJoinError("");
+    setRequestJoinSuccess("");
+    setShowRequestJoinModal(team);
+  };
+
+  const handleRequestJoin = async (e) => {
+    e.preventDefault();
+    setRequestJoinError("");
+    setRequestJoinSuccess("");
+    setRequestJoinLoading(true);
+    try {
+      const payload = { teamKey: showRequestJoinModal.teamKey };
+      if (requestJoinMessage.trim()) payload.message = requestJoinMessage.trim();
+      const res = await api.requestJoinTeam(payload);
+      if (res.ok) {
+        setRequestJoinSuccess(res.data?.message || "Join request sent successfully!");
+        setTimeout(() => {
+          setShowRequestJoinModal(null);
+          setRequestJoinMessage("");
+          setRequestJoinSuccess("");
+        }, 1800);
+      } else {
+        setRequestJoinError(res.data?.message || "Failed to send join request");
+      }
+    } catch {
+      setRequestJoinError("Network error");
+    }
+    setRequestJoinLoading(false);
+  };
+
+  const openPendingRequests = async (team, e) => {
+    e?.stopPropagation();
+    setShowPendingModal(team);
+    setPendingRequests([]);
+    setPendingLoading(true);
+    try {
+      const res = await api.getPendingRequests({ teamKey: team.teamKey });
+      if (res.ok && Array.isArray(res.data?.data)) {
+        setPendingRequests(res.data.data);
+      }
+    } catch { }
+    setPendingLoading(false);
+  };
+
+  const handleAccept = async (requestUserId) => {
+    setAcceptDeclineLoading(requestUserId + "_accept");
+    try {
+      const res = await api.acceptJoinTeam({ teamKey: showPendingModal.teamKey, requestUserId });
+      if (res.ok) {
+        setPendingRequests((prev) => prev.filter((r) => r.userId !== requestUserId && r.userId?._id !== requestUserId));
+      }
+    } catch { }
+    setAcceptDeclineLoading(null);
+  };
+
+  const handleDecline = async (requestUserId) => {
+    setAcceptDeclineLoading(requestUserId + "_decline");
+    try {
+      const res = await api.declineJoinTeam({ teamKey: showPendingModal.teamKey, requestUserId });
+      if (res.ok) {
+        setPendingRequests((prev) => prev.filter((r) => r.userId !== requestUserId && r.userId?._id !== requestUserId));
+      }
+    } catch { }
+    setAcceptDeclineLoading(null);
   };
 
   const openEdit = (team, e) => {
@@ -196,7 +257,7 @@ const handleCreate = async (e) => {
       layout
       whileHover={{ scale: 1.01, borderColor: "rgba(99,102,241,0.3)" }}
       whileTap={{ scale: 0.995 }}
-      onClick={() => setSelectedTeam(team)}
+      onClick={() => router.push(`/dashboard/teams/${team.teamKey}`)}
       className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 cursor-pointer transition-all hover:bg-white/[0.04]"
     >
       <div className="flex items-start gap-5">
@@ -206,10 +267,14 @@ const handleCreate = async (e) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <h3 className="text-lg font-semibold text-white">{team.teamName}</h3>
-            {isAdmin && (
-             <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 dark:bg-indigo-400/10 border border-indigo-500/20 dark:border-indigo-400/20 px-2.5 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
 
+            {isAdmin ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-[11px] font-medium text-amber-400">
                 <Crown className="h-3 w-3" /> Admin
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 text-[11px] font-medium text-indigo-400">
+                <UserCheck className="h-3 w-3" /> Member
               </span>
             )}
           </div>
@@ -237,6 +302,15 @@ const handleCreate = async (e) => {
         <div className="flex items-center gap-1 shrink-0">
           {isAdmin && (
             <>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => openPendingRequests(team, e)}
+                title="Pending join requests"
+                className="rounded-xl p-2.5 text-zinc-500 hover:bg-amber-500/10 hover:text-amber-400 transition-all opacity-0 group-hover:opacity-100"
+              >
+                <Bell className="h-4 w-4" />
+              </motion.button>
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -286,7 +360,7 @@ const handleCreate = async (e) => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             <input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); if (!e.target.value.trim()) setSearchResult(null); }}
               placeholder="Search by team key..."
               className="w-full rounded-xl border border-white/10 bg-white/5 pl-11 pr-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
             />
@@ -318,11 +392,11 @@ const handleCreate = async (e) => {
                 <div className="flex items-center gap-2 text-xs text-indigo-400 mb-3">
                   <Search className="h-3 w-3" /> Search Result
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-lg font-bold text-indigo-300">
+                <div className="flex items-start gap-4 flex-wrap sm:flex-nowrap">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-lg font-bold text-indigo-300">
                     {searchResult.teamName?.[0]?.toUpperCase() || "T"}
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <div className="text-base font-semibold text-white">{searchResult.teamName}</div>
                     <div className="text-sm text-zinc-400">{searchResult.teamDescription || "No description"}</div>
                     <div className="mt-1 flex items-center gap-2">
@@ -331,6 +405,20 @@ const handleCreate = async (e) => {
                         {copiedKey === searchResult.teamKey ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
                     </div>
+                  </div>
+                  <div className="shrink-0">
+                    {isAlreadyMember(searchResult.teamKey) ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-400">
+                        <UserCheck className="h-4 w-4" /> Already a member
+                      </span>
+                    ) : (
+                      <GlowButton
+                        onClick={(e) => openRequestJoin(searchResult, e)}
+                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white"
+                      >
+                        <UserPlus className="h-4 w-4" /> Request to Join
+                      </GlowButton>
+                    )}
                   </div>
                 </div>
               </div>
@@ -416,66 +504,153 @@ const handleCreate = async (e) => {
           )}
         </div>
       )}
+      {/*  */}
 
-      {/* Team Detail Card Modal */}
+      {/* Request Join Modal */}
       <AnimatePresence>
-        {selectedTeam && (
+        {showRequestJoinModal && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTeam(null)} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowRequestJoinModal(null)} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10">
+                    <UserPlus className="h-5 w-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-white">Request to Join</h3>
+                    <p className="text-xs text-zinc-500">{showRequestJoinModal.teamName}</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowRequestJoinModal(null)} className="text-zinc-400 hover:text-white transition-colors"><X className="h-5 w-5" /></button>
+              </div>
+              {requestJoinError && (
+                <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{requestJoinError}</div>
+              )}
+              {requestJoinSuccess && (
+                <div className="mb-4 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400 flex items-center gap-2">
+                  <Check className="h-4 w-4" /> {requestJoinSuccess}
+                </div>
+              )}
+              <form onSubmit={handleRequestJoin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">Message <span className="text-zinc-500 font-normal">(optional)</span></label>
+                  <textarea
+                    value={requestJoinMessage}
+                    onChange={(e) => setRequestJoinMessage(e.target.value)}
+                    rows={3}
+                    placeholder="Tell the team admin why you want to join... (8-200 characters if provided)"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                  />
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setShowRequestJoinModal(null)} className="flex-1 rounded-xl border border-white/10 bg-white/5 py-3 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
+                  <GlowButton type="submit" disabled={requestJoinLoading} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 py-3 text-sm font-semibold text-white disabled:opacity-50">
+                    {requestJoinLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserPlus className="h-4 w-4" /> Send Request</>}
+                  </GlowButton>
+                </div>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Pending Requests Modal */}
+      <AnimatePresence>
+        {showPendingModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPendingModal(null)} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-900 p-8 shadow-2xl"
+              className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-2xl max-h-[80vh] flex flex-col"
             >
-              <button onClick={() => setSelectedTeam(null)} className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"><X className="h-5 w-5" /></button>
-              <div className="flex items-center gap-5 mb-6">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-2xl font-bold text-indigo-300">
-                  {selectedTeam.teamName?.[0]?.toUpperCase() || "T"}
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">{selectedTeam.teamName}</h2>
-                  <p className="text-sm text-zinc-400 mt-1">{selectedTeam.teamDescription || "No description"}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
-                  <label className="block text-xs font-medium text-zinc-500 mb-2 uppercase tracking-wider">Team Key</label>
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-mono font-bold text-white tracking-wider">{selectedTeam.teamKey}</span>
-                    <button
-                      onClick={(e) => copyTeamKey(selectedTeam.teamKey, e)}
-                      className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-zinc-400 hover:bg-white/10 hover:text-white transition-all"
-                    >
-                      {copiedKey === selectedTeam.teamKey ? (
-                        <><Check className="h-4 w-4 text-green-400" /> Copied</>
-                      ) : (
-                        <><Copy className="h-4 w-4" /> Copy</>
-                      )}
-                    </button>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10">
+                    <Bell className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-white">Pending Join Requests</h3>
+                    <p className="text-xs text-zinc-500">{showPendingModal.teamName}</p>
                   </div>
                 </div>
-
-                {selectedTeam.createdAt && (
-                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
-                    <label className="block text-xs font-medium text-zinc-500 mb-1 uppercase tracking-wider">Created</label>
-                    <p className="text-sm text-white">{new Date(selectedTeam.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                <button onClick={() => setShowPendingModal(null)} className="text-zinc-400 hover:text-white transition-colors"><X className="h-5 w-5" /></button>
+              </div>
+              <div className="overflow-y-auto flex-1 -mx-1 px-1">
+                {pendingLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-white/5" />)}
+                  </div>
+                ) : pendingRequests.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <CheckCheck className="h-12 w-12 text-zinc-700 mb-3" />
+                    <p className="text-sm text-zinc-400">No pending requests</p>
+                    <p className="text-xs text-zinc-600 mt-1">All join requests have been handled.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingRequests.map((req, i) => {
+                      const reqUserId = req.userId?._id || req.userId;
+                      const reqName = req.userId?.name || req.name || "Unknown User";
+                      const reqEmail = req.userId?.email || req.email || "";
+                      const isLoadingAccept = acceptDeclineLoading === reqUserId + "_accept";
+                      const isLoadingDecline = acceptDeclineLoading === reqUserId + "_decline";
+                      return (
+                        <div key={reqUserId || i} className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
+                          <div className="flex items-start gap-4">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-sm font-bold text-indigo-300">
+                              {reqName[0]?.toUpperCase() || "U"}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold text-white">{reqName}</div>
+                              {reqEmail && <div className="text-xs text-zinc-500">{reqEmail}</div>}
+                              {req.message && (
+                                <div className="mt-2 flex items-start gap-1.5 text-xs text-zinc-400">
+                                  <MessageSquare className="h-3.5 w-3.5 mt-0.5 shrink-0 text-zinc-500" />
+                                  <span className="line-clamp-2">{req.message}</span>
+                                </div>
+                              )}
+                              {req.requestedAt && (
+                                <div className="mt-1 flex items-center gap-1 text-xs text-zinc-600">
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(req.requestedAt).toLocaleDateString()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => handleDecline(reqUserId)}
+                              disabled={isLoadingDecline || isLoadingAccept}
+                              className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 py-2 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50"
+                            >
+                              {isLoadingDecline ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><XCircle className="h-3.5 w-3.5" /> Decline</>}
+                            </button>
+                            <button
+                              onClick={() => handleAccept(reqUserId)}
+                              disabled={isLoadingAccept || isLoadingDecline}
+                              className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-green-500/20 bg-green-500/10 py-2 text-xs font-medium text-green-400 hover:bg-green-500/20 transition-all disabled:opacity-50"
+                            >
+                              {isLoadingAccept ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><CheckCheck className="h-3.5 w-3.5" /> Accept</>}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-
-                {selectedTeam.members && (
-                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
-                    <label className="block text-xs font-medium text-zinc-500 mb-1 uppercase tracking-wider">Members</label>
-                    <p className="text-sm text-white">{selectedTeam.members.length || 0} member{(selectedTeam.members?.length || 0) !== 1 ? "s" : ""}</p>
-                  </div>
-                )}
               </div>
-
-              <div className="mt-6">
+              <div className="mt-4 pt-4 border-t border-white/5">
                 <button
-                  onClick={() => setSelectedTeam(null)}
+                  onClick={() => setShowPendingModal(null)}
                   className="w-full rounded-xl border border-white/10 bg-white/5 py-3 text-sm text-zinc-400 hover:text-white transition-colors"
                 >
                   Close

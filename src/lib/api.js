@@ -40,7 +40,12 @@ export const api = {
   updateTeam: (body) => request("/taskmate/team/updateTeam", { method: "PATCH", headers: { "Content-Type": "application/json", }, body: JSON.stringify(body) }),
   searchTeam: (data) => request("/taskmate/team/searchTeam", {method: "POST",headers: { "Content-Type": "application/json",},body: JSON.stringify(data),credentials: "include",}),
   listAdminTeams: () => request("/taskmate/team/listAdminTeams", { method: "GET" }),
-  listMemberTeams: () => request("/taskmate/team/listMemberTeams", { method: "GET" }),
+  listMemberTeams: () => request("/taskmate/team/listMembersTeam", { method: "GET" }),
+  requestJoinTeam: (body) => request("/taskmate/team/requestJoinTeam", { method: "POST", body: JSON.stringify(body) }),
+  getPendingRequests: (body) => request("/taskmate/team/pendingRequests", { method: "POST", body: JSON.stringify(body) }),
+  acceptJoinTeam: (body) => request("/taskmate/team/acceptJoinTeam", { method: "POST", body: JSON.stringify(body) }),
+  declineJoinTeam: (body) => request("/taskmate/team/declineJoinTeam", { method: "POST", body: JSON.stringify(body) }),
+  getTeamDetails: (body) => request("/taskmate/team/getTeamDetails", {method: "POST",body: JSON.stringify(body),}),
 
   // User
   updateProfile: (body) => request("/taskmate/user/updateProfile", { method: "PATCH", body: JSON.stringify(body), }),
